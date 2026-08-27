@@ -1,0 +1,7 @@
+bin/
+obj/
+node_modules/
+appsettings.Development.json
+.env
+electron/build/
+electron/dist/

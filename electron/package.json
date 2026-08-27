@@ -1,0 +1,38 @@
+{
+  "name": "checkscan",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CheckScan desktop app - TWAIN batch scanning + AI extraction for check deposits",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "publish:api": "dotnet publish ../server/CheckScan.Api -c Release -r win-x86 --self-contained -p:PublishSingleFile=true -o build/server",
+    "dist": "npm run publish:api && electron-builder"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.checkscan.desktop",
+    "productName": "CheckScan",
+    "files": [
+      "main.js",
+      "preload.js",
+      "ai/**/*",
+      "renderer/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "build/server",
+        "to": "server"
+      }
+    ],
+    "win": {
+      "target": "nsis"
+    }
+  }
+}

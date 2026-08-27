@@ -1,0 +1,24 @@
+{
+  // DEV CONVENIENCE ONLY. Copy this file to appsettings.Development.json (gitignored).
+  //
+  // In a real install the Azure SQL and Azure Blob connection strings are entered on the
+  // Electron Settings page and held DPAPI-encrypted at %LOCALAPPDATA%\CheckScan\secrets.dat
+  // (see Storage/SecretStore.cs) - never in plain-text config. The entries below are just a
+  // fallback so `dotnet run` works without seeding that file first.
+
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=tcp:YOUR_SERVER.database.windows.net,1433;Database=CheckScan;User ID=YOUR_USER;Password=YOUR_PASSWORD;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;",
+    "AzureBlobStorage": "DefaultEndpointsProtocol=https;AccountName=YOUR_ACCOUNT;AccountKey=YOUR_KEY;EndpointSuffix=core.windows.net"
+  },
+
+  "ImageStorage": {
+    // "Local" (default) writes confirmed check images to disk; "AzureBlob" uploads them to the
+    // private container named below.
+    "Provider": "Local",
+    "RootPath": ""
+  },
+
+  "AzureBlobStorage": {
+    "ContainerName": "check-images"
+  }
+}

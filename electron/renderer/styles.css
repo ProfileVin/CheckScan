@@ -1,0 +1,123 @@
+body {
+  font-family: system-ui, sans-serif;
+  margin: 0;
+  padding: 1.5rem;
+  color: #1a1a1a;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+h1 {
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+nav {
+  display: flex;
+  gap: 1rem;
+}
+
+nav a {
+  text-decoration: none;
+  color: #555;
+  padding: 0.4rem 0.7rem;
+  border-radius: 4px;
+}
+
+nav a.active {
+  background: #1a1a1a;
+  color: white;
+}
+
+button {
+  padding: 0.4rem 0.9rem;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.toolbar {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.two-column {
+  display: flex;
+  gap: 2rem;
+}
+
+#fr-list {
+  list-style: none;
+  padding: 0;
+  min-width: 220px;
+}
+
+#fr-list li {
+  padding: 0.5rem;
+  border-bottom: 1px solid #ddd;
+  cursor: pointer;
+}
+
+#fr-list li:hover {
+  background: #f5f5f5;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+table th,
+table td {
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid #ddd;
+}
+
+.check-card {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.85rem;
+}
+
+.field.low-confidence {
+  background: #fde68a;
+  border-radius: 4px;
+  padding: 0.3rem;
+}
+
+.settings-block {
+  margin-bottom: 2rem;
+}
+
+.settings-block input[type="password"],
+.settings-block select {
+  display: block;
+  margin: 0.4rem 0;
+  min-width: 260px;
+}

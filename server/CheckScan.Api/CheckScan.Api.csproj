@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWindowsForms>true</UseWindowsForms>
+    <!-- Matches the working TwainTest reference project: the Epson TWAIN driver is 32-bit-only,
+         and loading it into a 64-bit host process caused a native STATUS_STACK_BUFFER_OVERRUN
+         crash during data transfer that no managed try/catch could intercept. -->
+    <PlatformTarget>x86</PlatformTarget>
+  </PropertyGroup>
+
+  <!-- Publish as a self-contained single file so the end user needs no separate .NET runtime;
+       bundled into Electron's resources folder (see electron/package.json "build"). Stays win-x86
+       to match PlatformTarget above. Only applied on `dotnet publish -p:PublishSingleFile=true`,
+       so `dotnet run` in development is unaffected. -->
+  <PropertyGroup Condition="'$(PublishSingleFile)' == 'true'">
+    <RuntimeIdentifier>win-x86</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+  </PropertyGroup>
+
+  <!-- Never ship the developer's local appsettings.Development.json (may hold a plaintext
+       connection string) inside a packaged build. -->
+  <ItemGroup>
+    <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.24.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.11" />
+    <PackageReference Include="NTwain" Version="3.7.6" />
+    <PackageReference Include="System.Drawing.Common" Version="9.0.0" />
+  </ItemGroup>
+
+</Project>
