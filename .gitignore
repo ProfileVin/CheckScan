@@ -5,3 +5,6 @@ appsettings.Development.json
 .env
 electron/build/
 electron/dist/
+
+# Local sample check scans - large binaries, not needed in the repo
+Sample Check/
