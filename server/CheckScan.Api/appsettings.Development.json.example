@@ -20,5 +20,33 @@
 
   "AzureBlobStorage": {
     "ContainerName": "check-images"
+  },
+
+  "Anthropic": {
+    // Server-side check extraction. ApiKey is the only value that MUST be set here (or via the
+    // ANTHROPIC__APIKEY env var) - it's a secret and never goes in appsettings.json.
+    "ApiKey": "sk-ant-...",
+    // The rest already have defaults in appsettings.json; override only if you need to. All are
+    // read at runtime - change + restart the API, no rebuild.
+    "Model": "claude-opus-5",
+    // 0 = no practical limit (built-in 16000 ceiling); a positive number caps the response.
+    "MaxTokens": 0,
+    "Endpoint": "https://api.anthropic.com/v1/messages",
+    "ApiVersion": "2023-06-01",
+    "TimeoutSeconds": 120,
+    // Empty string = use the built-in extraction prompt (CheckExtractionService.DefaultExtractionPrompt).
+    "ExtractionPrompt": ""
+  },
+
+  "Scan": {
+    // JPEG quality for saved scans, 1-100. Lower = smaller files, worse MICR/handwriting legibility.
+    "JpegQuality": 90,
+    // Capture resolution in DPI. 300 is the check/document standard; applied best-effort.
+    "Dpi": 300
+  },
+
+  "Database": {
+    // > 0 turns on EF Core EnableRetryOnFailure to ride out transient Azure SQL errors.
+    "MaxRetryCount": 0
   }
 }

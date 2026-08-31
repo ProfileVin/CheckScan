@@ -3,7 +3,6 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const WebSocket = require('ws');
-const { extractCheck } = require('./ai/extractCheck');
 const { saveApiKey, hasApiKey } = require('./ai/secureSettings');
 
 let apiProcess = null;
@@ -75,8 +74,14 @@ function connectScanSocket(port) {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1100,
-    height: 750,
+    width: 1280,
+    height: 800,
+    // Resizable within a fixed band: never smaller than 1024x768, never larger than 1920x1080.
+    minWidth: 1024,
+    minHeight: 768,
+    maxWidth: 1920,
+    maxHeight: 1080,
+    resizable: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -136,20 +141,34 @@ ipcMain.handle('get-current-scanner', () => getJson('/scanners/current'));
 ipcMain.handle('select-scanner', (_event, { sourceId, sourceName }) =>
   postJson('/scanners/select', { sourceId, sourceName }));
 
-ipcMain.handle('start-scan', async (_event, { singleScan } = {}) => {
-  console.log('Starting scan...');
-  console.log('apiBaseUrl:', apiBaseUrl);
-
+ipcMain.handle('start-scan', async () => {
+  // Empty body: the API auto-selects ADF batch vs single flatbed from the scanner's capabilities.
   const res = await fetch(`${apiBaseUrl}/scan`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ singleScan: Boolean(singleScan) }),
+    body: '{}',
   });
   if (!res.ok) throw new Error(await errorMessageFrom(res, 'Failed to start scan'));
   return true;
 });
 
-ipcMain.handle('extract-check', (_event, imagePath) => extractCheck(imagePath));
+ipcMain.handle('get-feeder-status', () => getJson('/scan/feeder-status'));
+
+// Extraction runs server-side now: the API calls Anthropic with the key from its
+// Anthropic:ApiKey config (see server AI/CheckExtractionService.cs).
+ipcMain.handle('extract-check', (_event, imagePath) => postJson('/checks/extract', { imagePath }));
+
+// Returns a scanned check JPEG as a data URL so the review panel can display it. The images
+// live on local disk until the check is saved; returns null if the file can't be read.
+ipcMain.handle('get-check-image', (_event, imagePath) => {
+  try {
+    const buf = fs.readFileSync(imagePath);
+    return `data:image/jpeg;base64,${buf.toString('base64')}`;
+  } catch (err) {
+    console.error('[get-check-image]', err.message);
+    return null;
+  }
+});
 
 ipcMain.handle('create-batch', (_event, label) => postJson('/batches', { label: label ?? null }));
 
@@ -164,6 +183,19 @@ ipcMain.handle('get-reports-summary', (_event, { groupBy, from, to }) => {
   if (from) params.set('from', from);
   if (to) params.set('to', to);
   return getJson(`/reports/summary?${params.toString()}`);
+});
+
+// Writes a caller-supplied CSV string to a user-chosen file (used by the fundraiser
+// detail page's "Export to CSV"). Returns { saved, filePath }.
+ipcMain.handle('save-csv-file', async (_event, { defaultName, csv }) => {
+  const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+    title: 'Export to CSV',
+    defaultPath: defaultName || 'export.csv',
+    filters: [{ name: 'CSV', extensions: ['csv'] }],
+  });
+  if (canceled || !filePath) return { saved: false };
+  fs.writeFileSync(filePath, csv);
+  return { saved: true, filePath };
 });
 
 ipcMain.handle('export-reports-csv', async (_event, { groupBy, from, to }) => {

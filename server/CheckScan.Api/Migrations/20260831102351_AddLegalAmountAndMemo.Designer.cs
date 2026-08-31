@@ -4,6 +4,7 @@ using CheckScan.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CheckScan.Api.Migrations
 {
     [DbContext(typeof(CheckScanDbContext))]
-    partial class CheckScanDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260831102351_AddLegalAmountAndMemo")]
+    partial class AddLegalAmountAndMemo
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -92,10 +95,6 @@ namespace CheckScan.Api.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("RoutingNumber")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");

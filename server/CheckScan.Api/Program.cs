@@ -1,3 +1,4 @@
+using CheckScan.Api.AI;
 using CheckScan.Api.Data;
 using CheckScan.Api.Endpoints;
 using CheckScan.Api.Storage;
@@ -21,20 +22,36 @@ builder.WebHost.ConfigureKestrel(options =>
 // Electron Settings page), falling back to ConnectionStrings:* config for local dev.
 builder.Services.AddSingleton<SecretStore>();
 
+// Set Database:MaxRetryCount > 0 in appsettings to ride out transient Azure SQL blips
+// (EnableRetryOnFailure). 0 (default) keeps the original fail-fast behaviour.
+var dbMaxRetry = builder.Configuration.GetValue<int?>("Database:MaxRetryCount") ?? 0;
+void ConfigureSql(Microsoft.EntityFrameworkCore.Infrastructure.SqlServerDbContextOptionsBuilder o)
+{
+    if (dbMaxRetry > 0) o.EnableRetryOnFailure(dbMaxRetry);
+}
+
 builder.Services.AddDbContext<CheckScanDbContext>((sp, options) =>
 {
     var connectionString = sp.GetRequiredService<SecretStore>().GetDb();
     if (!string.IsNullOrWhiteSpace(connectionString))
     {
-        options.UseSqlServer(connectionString);
+        options.UseSqlServer(connectionString, ConfigureSql);
     }
     else
     {
         // Not configured yet - register the provider so the context can still be constructed;
         // the startup Migrate() below is already wrapped to fail soft, and save-a-check calls
         // surface a clear error until a connection string is entered in Settings.
-        options.UseSqlServer();
+        options.UseSqlServer(ConfigureSql);
     }
+});
+
+// Server-side check extraction: calls the Anthropic vision API with the key from
+// Anthropic:ApiKey config. Typed HttpClient - the vision call can exceed the default 100s.
+builder.Services.AddHttpClient<CheckExtractionService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(
+        builder.Configuration.GetValue<int?>("Anthropic:TimeoutSeconds") ?? 120);
 });
 
 builder.Services.AddSingleton<TwainThread>();

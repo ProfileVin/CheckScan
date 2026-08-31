@@ -22,17 +22,25 @@ public sealed class TwainScanService
     private readonly ScanBroadcaster _broadcaster;
     private readonly ILogger<TwainScanService> _logger;
     private readonly ImageStorageOptions _imageStorage;
+    private readonly long _jpegQuality;
+    private readonly int _scanDpi;
 
     private TwainSession? _session;
+    private int? _selectedSourceId;
     private DataSource? _currentSource;
+    private bool _feederSupported;
     private int _scannedCount;
 
-    public TwainScanService(TwainThread twainThread, ScanBroadcaster broadcaster, ILogger<TwainScanService> logger, ImageStorageOptions imageStorage)
+    public TwainScanService(TwainThread twainThread, ScanBroadcaster broadcaster, ILogger<TwainScanService> logger, ImageStorageOptions imageStorage, IConfiguration config)
     {
         _twainThread = twainThread;
         _broadcaster = broadcaster;
         _logger = logger;
         _imageStorage = imageStorage;
+        // Runtime-tunable via appsettings (Scan:JpegQuality, 1-100); 90 keeps MICR/handwriting legible.
+        _jpegQuality = Math.Clamp(config.GetValue<long?>("Scan:JpegQuality") ?? 90L, 1L, 100L);
+        // Scan:Dpi - 300 is the document/check standard; applied best-effort (see StartScan).
+        _scanDpi = Math.Clamp(config.GetValue<int?>("Scan:Dpi") ?? 300, 50, 1200);
     }
 
     private TwainSession Session
@@ -56,38 +64,114 @@ public sealed class TwainScanService
 
     public void SelectSource(string sourceId)
     {
+        var id = int.Parse(sourceId);
+
         _currentSource?.Close();
-        var rc = Session.OpenSource(int.Parse(sourceId));
+        _currentSource = null;
+
+        // Validate the choice and read its feeder capability now, but do NOT keep the source
+        // open: the Epson driver disconnects an idle open source after 15 minutes (E930-A2022).
+        // The source is (re)opened on demand by EnsureSourceOpen() for the feeder check + scan.
+        var rc = Session.OpenSource(id);
         if (rc != ReturnCode.Success || Session.CurrentSource is null)
         {
             throw new ScannerException($"Scanner '{sourceId}' could not be opened.");
         }
-        _currentSource = Session.CurrentSource;
+        var source = Session.CurrentSource;
+        _feederSupported = source.Capabilities.CapFeederEnabled.IsSupported;
+        _logger.LogInformation("Scanner '{Name}' selected. Document feeder supported: {Feeder}.",
+            source.Name, _feederSupported);
+        source.Close();
+
+        _selectedSourceId = id;
     }
 
     /// <summary>
-    /// Configures the feeder and triggers a scan. When <paramref name="singleScan"/> is true, the
-    /// feeder is explicitly disabled (flatbed mode) to capture exactly one check; otherwise the
-    /// feeder/auto-feed is enabled to drain the whole hopper. Results stream via <see cref="ScanBroadcaster"/>.
+    /// Opens the selected data source if it isn't currently open, and returns it. Kept closed
+    /// while idle so the Epson driver's 15-minute inactivity timeout (E930-A2022) can't strand
+    /// the session; <see cref="OnTransferReady"/>/<see cref="OnTransferError"/> close it again
+    /// once a batch ends.
     /// </summary>
-    public void StartScan(bool singleScan)
+    private DataSource EnsureSourceOpen()
     {
-        var source = _currentSource ?? throw new ScannerException("No scanner selected. Call /scanners/select first.");
-
-        if (singleScan)
+        if (_currentSource is not null && Session.CurrentSource is not null)
         {
-            // Flatbed mode: just not turning the feeder on isn't enough - some drivers default to
-            // (or remember) ADF mode, so it has to be explicitly turned off here.
-            if (source.Capabilities.CapFeederEnabled.IsSupported)
+            return _currentSource;
+        }
+
+        if (_selectedSourceId is null)
+        {
+            throw new ScannerException("No scanner selected. Call /scanners/select first.");
+        }
+
+        var rc = Session.OpenSource(_selectedSourceId.Value);
+        if (rc != ReturnCode.Success || Session.CurrentSource is null)
+        {
+            throw new ScannerException("The selected scanner could not be opened. Reconnect it and try again.");
+        }
+
+        _currentSource = Session.CurrentSource;
+        _feederSupported = _currentSource.Capabilities.CapFeederEnabled.IsSupported;
+        return _currentSource;
+    }
+
+    /// <summary>True when the selected scanner exposes an automatic document feeder.</summary>
+    public bool FeederSupported => _feederSupported;
+
+    /// <summary>True when the driver can confirm sheets are sitting in the feeder right now.</summary>
+    public bool FeederLoaded()
+    {
+        var cap = EnsureSourceOpen().Capabilities.CapFeederLoaded;
+        return cap is { IsSupported: true } && cap.GetCurrent() == BoolType.True;
+    }
+
+    /// <summary>
+    /// Configures the source and triggers a scan. <paramref name="useFeeder"/> null (the normal case)
+    /// auto-selects: ADF batch mode when the scanner has a document feeder, single flatbed capture
+    /// when it doesn't. Pass true/false to force one. Results stream via <see cref="ScanBroadcaster"/>.
+    /// </summary>
+    public void StartScan(bool? useFeeder)
+    {
+        var source = EnsureSourceOpen();
+        var feeder = useFeeder ?? _feederSupported;
+
+        // A single unsupported capability must never abort the batch - log and carry on.
+        void TrySet(string capName, Action set)
+        {
+            try
             {
-                source.Capabilities.CapFeederEnabled.SetValue(BoolType.False);
+                set();
+                _logger.LogInformation("TWAIN capability {Cap} set.", capName);
             }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "TWAIN capability {Cap} could not be set - continuing without it.", capName);
+            }
+        }
+
+        if (feeder)
+        {
+            TrySet("CAP_FEEDERENABLED", () => source.Capabilities.CapFeederEnabled.SetValue(BoolType.True));
+            TrySet("CAP_AUTOFEED", () => source.Capabilities.CapAutoFeed.SetValue(BoolType.True));
+            // Many drivers default CAP_XFERCOUNT to 1 - without -1 (all) only the first sheet
+            // transfers even with auto-feed on, so the feeder never actually drains.
+            TrySet("CAP_XFERCOUNT", () => source.Capabilities.CapXferCount.SetValue(-1));
+            // Checks are read front-only.
+            TrySet("CAP_DUPLEXENABLED", () => source.Capabilities.CapDuplexEnabled.SetValue(BoolType.False));
         }
         else
         {
-            source.Capabilities.CapFeederEnabled.SetValue(BoolType.True);
-            source.Capabilities.CapAutoFeed.SetValue(BoolType.True);
+            // Flatbed: some drivers default to (or remember) ADF mode, so turn the feeder off explicitly.
+            if (source.Capabilities.CapFeederEnabled.IsSupported)
+            {
+                TrySet("CAP_FEEDERENABLED", () => source.Capabilities.CapFeederEnabled.SetValue(BoolType.False));
+            }
         }
+
+        // Capture resolution. Best-effort: if the driver only exposes a fixed set of DPI values it
+        // snaps to the nearest; if it rejects the call outright, TrySet logs and we keep the default.
+        TrySet("ICAP_XRESOLUTION", () => source.Capabilities.ICapXResolution.SetValue((float)_scanDpi));
+        TrySet("ICAP_YRESOLUTION", () => source.Capabilities.ICapYResolution.SetValue((float)_scanDpi));
 
         // Native transfer previously caused a fatal native-level crash (STATUS_STACK_BUFFER_OVERRUN)
         // that no managed try/catch could intercept - but that turned out to be a 64-bit host /
@@ -98,9 +182,7 @@ public sealed class TwainScanService
         // rest black) because this driver's memory-chunk delivery didn't match our reassembly logic.
         source.Capabilities.ICapXferMech.SetValue(XferMech.Native);
 
-        // CAP_FEEDERLOADED only applies in feeder mode - flatbed scans have no "feeder loaded"
-        // concept, so this pre-check is skipped entirely for a single/flatbed scan.
-        if (!singleScan)
+        if (feeder)
         {
             // CAP_FEEDERLOADED is only trustworthy on some drivers once IsSupported is true; several
             // TWAIN drivers (observed with an Epson feeder) report it unreliably before the source
@@ -139,7 +221,7 @@ public sealed class TwainScanService
 
             var jpegEncoder = ImageCodecInfo.GetImageEncoders().First(c => c.FormatID == ImageFormat.Jpeg.Guid);
             using var encoderParams = new EncoderParameters(1);
-            encoderParams.Param[0] = new EncoderParameter(Encoder.Quality, 90L);
+            encoderParams.Param[0] = new EncoderParameter(Encoder.Quality, _jpegQuality);
             bitmap.Save(path, jpegEncoder, encoderParams);
 
             var index = _scannedCount++;
@@ -214,6 +296,7 @@ public sealed class TwainScanService
         if (e.PendingTransferCount == 0)
         {
             _currentSource?.Close();
+            _currentSource = null;
             _ = _broadcaster.BroadcastCheckScannedAsync(_scannedCount, string.Empty, done: true);
         }
     }
@@ -222,6 +305,7 @@ public sealed class TwainScanService
     {
         _logger.LogWarning(e.Exception, "TWAIN transfer error: {ReturnCode} {Status}", e.ReturnCode, e.SourceStatus);
         _currentSource?.Close();
+        _currentSource = null;
         _ = _broadcaster.BroadcastScanErrorAsync($"Scan failed: {e.ReturnCode}");
     }
 }
