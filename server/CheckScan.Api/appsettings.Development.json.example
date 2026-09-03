@@ -1,10 +1,13 @@
 {
   // DEV CONVENIENCE ONLY. Copy this file to appsettings.Development.json (gitignored).
   //
-  // In a real install the Azure SQL and Azure Blob connection strings are entered on the
-  // Electron Settings page and held DPAPI-encrypted at %LOCALAPPDATA%\CheckScan\secrets.dat
-  // (see Storage/SecretStore.cs) - never in plain-text config. The entries below are just a
-  // fallback so `dotnet run` works without seeding that file first.
+  // For a client install, configure the Azure SQL / Azure Blob / Anthropic values on the target
+  // PC via appsettings.Production.json next to CheckScan.Api.exe, or via machine environment
+  // variables - see DEPLOYMENT.md and appsettings.Production.json.example. (The API can also hold
+  // the SQL/Blob strings DPAPI-encrypted at %LOCALAPPDATA%\CheckScan\secrets.dat - see
+  // Storage/SecretStore.cs - but that file is now written only if the /settings/db-connection
+  // and /settings/blob-connection endpoints are called directly; there is no longer an in-app
+  // screen for them.) The entries below are just a dev fallback so `dotnet run` works.
 
   "ConnectionStrings": {
     "DefaultConnection": "Server=tcp:YOUR_SERVER.database.windows.net,1433;Database=CheckScan;User ID=YOUR_USER;Password=YOUR_PASSWORD;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;",
@@ -20,5 +23,33 @@
 
   "AzureBlobStorage": {
     "ContainerName": "check-images"
+  },
+
+  "Anthropic": {
+    // Server-side check extraction. ApiKey is the only value that MUST be set here (or via the
+    // ANTHROPIC__APIKEY env var) - it's a secret and never goes in appsettings.json.
+    "ApiKey": "sk-ant-...",
+    // The rest already have defaults in appsettings.json; override only if you need to. All are
+    // read at runtime - change + restart the API, no rebuild.
+    "Model": "claude-opus-5",
+    // 0 = no practical limit (built-in 16000 ceiling); a positive number caps the response.
+    "MaxTokens": 0,
+    "Endpoint": "https://api.anthropic.com/v1/messages",
+    "ApiVersion": "2023-06-01",
+    "TimeoutSeconds": 120,
+    // Empty string = use the built-in extraction prompt (CheckExtractionService.DefaultExtractionPrompt).
+    "ExtractionPrompt": ""
+  },
+
+  "Scan": {
+    // JPEG quality for saved scans, 1-100. Lower = smaller files, worse MICR/handwriting legibility.
+    "JpegQuality": 90,
+    // Capture resolution in DPI. 300 is the check/document standard; applied best-effort.
+    "Dpi": 300
+  },
+
+  "Database": {
+    // > 0 turns on EF Core EnableRetryOnFailure to ride out transient Azure SQL errors.
+    "MaxRetryCount": 0
   }
 }

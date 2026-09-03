@@ -72,6 +72,27 @@ public static class ScannerEndpoints
 
             return Results.Ok();
         });
+
+        // Backs the Settings page "Test Connection" button: physically re-opens the selected
+        // TWAIN source (via FeederLoaded -> EnsureSourceOpen) so a missing/unplugged scanner
+        // surfaces as a 400 with the ScannerException message.
+        app.MapPost("/scanners/test", async (TwainThread twainThread, TwainScanService scanService) =>
+        {
+            try
+            {
+                var result = await twainThread.RunOnTwainThread(() => new
+                {
+                    ok = true,
+                    hasFeeder = scanService.FeederSupported,
+                    feederLoaded = scanService.FeederLoaded(),
+                });
+                return Results.Ok(result);
+            }
+            catch (ScannerException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
     }
 
     public record SelectScannerRequest(string SourceId, string SourceName);

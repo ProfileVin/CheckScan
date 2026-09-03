@@ -30,3 +30,9 @@ async function navigate() {
 
 window.addEventListener('hashchange', navigate);
 navigate();
+
+// Sidebar CTA: jump to New Batch and kick off a scan via that view's own button.
+document.getElementById('sidebar-scan').addEventListener('click', () => {
+  location.hash = 'new-batch';
+  setTimeout(() => document.getElementById('nb-start')?.click(), 0);
+});
