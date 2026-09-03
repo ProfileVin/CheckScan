@@ -616,6 +616,11 @@
     setStatus(`Batch saved — ${savedOk} check${savedOk === 1 ? '' : 's'}.${note}`);
 
     if (savedOk > 0) {
+      // The Reports and Fundraisers views cache their data across navigation - mark them stale
+      // so the next visit re-fetches and shows the checks just saved.
+      window.Views.reports?.invalidate?.();
+      window.Views.fundraisers?.invalidate?.();
+
       const skipNote = skipped
         ? ` ${skipped} flagged check${skipped === 1 ? '' : 's'} ${skipped === 1 ? 'was' : 'were'} skipped because no fundraiser was assigned.`
         : '';

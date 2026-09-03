@@ -5,6 +5,13 @@
   let filtered = [];
   let page = 0;
 
+  // Navigation cache: render()/bind once, keep `all` between visits, paint instantly from it on
+  // re-entry while a fresh fetch runs in the background. `stale` (set by invalidate() after a
+  // batch save) forces the next visit to await fresh data first.
+  let rendered = false;
+  let loaded = false;
+  let stale = false;
+
   function root() {
     return document.getElementById('view-fundraisers');
   }
@@ -124,24 +131,40 @@
       await window.checkScan.createFundraiser(name);
       toggleAddForm(false);
       document.getElementById('fr-search-input').value = '';
-      await loadList();
+      await refresh({ background: false });
     } catch (err) {
       msg.textContent = `Could not add: ${err.message}`;
     }
   }
 
-  async function loadList() {
+  async function refresh({ background }) {
     try {
       all = await window.checkScan.listFundraisers();
+      loaded = true;
     } catch (err) {
-      document.getElementById('fr-rows').innerHTML =
-        `<tr><td colspan="5" class="fr-empty">Could not load fundraisers: ${escapeHtml(err.message)}</td></tr>`;
+      // A failed background refresh leaves the cached rows on screen.
+      if (!background) {
+        document.getElementById('fr-rows').innerHTML =
+          `<tr><td colspan="5" class="fr-empty">Could not load fundraisers: ${escapeHtml(err.message)}</td></tr>`;
+      }
       return;
     }
-    applyFilter(document.getElementById('fr-search-input').value);
+    repaint();
+
+    // If a fundraiser's detail is open, refresh it too (cheap; avoids a stale detail after a
+    // batch save).
+    const detail = document.getElementById('fr-detail');
+    if (detailData && detail && !detail.hidden) {
+      try {
+        detailData = await window.checkScan.getFundraiser(detailData.id);
+        renderDetail();
+      } catch {
+        // Keep the detail currently on screen.
+      }
+    }
   }
 
-  function applyFilter(term) {
+  function computeFiltered(term) {
     const q = (term || '').trim().toLowerCase();
     filtered = !q
       ? all.slice()
@@ -156,7 +179,22 @@
           ].join(' ').toLowerCase();
           return haystack.includes(q);
         });
+  }
+
+  // Search box changed - recompute and jump to the first page.
+  function applyFilter(term) {
+    computeFiltered(term);
     page = 0;
+    renderRows();
+  }
+
+  // Re-render at the current search + page (tab re-entry, background refresh); clamp the page
+  // if the row count shrank.
+  function repaint() {
+    const input = document.getElementById('fr-search-input');
+    computeFiltered(input ? input.value : '');
+    const maxPage = Math.max(0, Math.ceil(filtered.length / PAGE_SIZE) - 1);
+    if (page > maxPage) page = maxPage;
     renderRows();
   }
 
@@ -375,8 +413,21 @@
   window.Views = window.Views || {};
   window.Views.fundraisers = {
     async init() {
-      render();
-      await loadList();
+      if (!rendered) {
+        render();
+        rendered = true;
+      }
+      if (loaded && !stale) {
+        repaint();                     // instant, from the cached `all`
+        refresh({ background: true }); // fire-and-forget
+      } else {
+        await refresh({ background: false });
+      }
+      stale = false;
+    },
+    // Called after a batch save so the next visit re-fetches before painting.
+    invalidate() {
+      stale = true;
     },
   };
 })();

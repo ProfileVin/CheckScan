@@ -1,0 +1,58 @@
+{
+  // CLIENT INSTALL TEMPLATE. See DEPLOYMENT.md.
+  //
+  // Copy this file to  appsettings.Production.json  and place it next to CheckScan.Api.exe:
+  //   %LOCALAPPDATA%\Programs\CheckScan\resources\server\appsettings.Production.json
+  // The packaged app runs the API in the Production environment, so that file is loaded
+  // automatically. Equivalent alternative: set the same values as machine environment
+  // variables using "__" as the section separator, e.g. ConnectionStrings__DefaultConnection,
+  // Anthropic__ApiKey, ImageStorage__Provider  (env vars survive app updates; this file does not).
+  //
+  // Holds plaintext secrets - restrict its NTFS permissions, and NEVER commit a filled-in copy
+  // (appsettings.Production.json is gitignored; only this .example belongs in the repo).
+
+  "ConnectionStrings": {
+    // SQL Server-compatible database (Azure SQL, or local SQL Server / Express / LocalDB).
+    // The schema is created/updated automatically by EF Core migrations on first launch.
+    "DefaultConnection": "Server=tcp:YOUR_SERVER.database.windows.net,1433;Database=CheckScan;User ID=YOUR_USER;Password=YOUR_PASSWORD;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;",
+
+    // Only needed when ImageStorage:Provider below is "AzureBlob". Leave as-is otherwise.
+    "AzureBlobStorage": "DefaultEndpointsProtocol=https;AccountName=YOUR_ACCOUNT;AccountKey=YOUR_KEY;EndpointSuffix=core.windows.net"
+  },
+
+  "ImageStorage": {
+    // "Local" writes confirmed check images to disk (%LOCALAPPDATA%\CheckScan\Images by default).
+    // "AzureBlob" uploads them to the private container named under AzureBlobStorage below;
+    // any blob failure falls back to local disk for that image.
+    "Provider": "Local",
+    "RootPath": ""
+  },
+
+  "AzureBlobStorage": {
+    "ContainerName": "check-images"
+  },
+
+  "Anthropic": {
+    // Server-side check extraction. This is the ONE secret the packaged server can only get
+    // from configuration - there is no in-app field for it. Set it here or via ANTHROPIC__APIKEY.
+    "ApiKey": "sk-ant-...",
+    // Everything below already has a default in appsettings.json - override only if needed.
+    // All are read at runtime: edit + relaunch the app, no rebuild.
+    "Model": "claude-opus-5",
+    "MaxTokens": 0,
+    "Endpoint": "https://api.anthropic.com/v1/messages",
+    "ApiVersion": "2023-06-01",
+    "TimeoutSeconds": 120,
+    "ExtractionPrompt": ""
+  },
+
+  "Scan": {
+    "JpegQuality": 90,
+    "Dpi": 300
+  },
+
+  "Database": {
+    // > 0 turns on EF Core EnableRetryOnFailure to ride out transient Azure SQL errors.
+    "MaxRetryCount": 0
+  }
+}

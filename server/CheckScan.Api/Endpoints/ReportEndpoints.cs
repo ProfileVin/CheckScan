@@ -15,6 +15,23 @@ public static class ReportEndpoints
             return Results.Ok(rows);
         });
 
+        app.MapGet("/reports/transactions", async (CheckScanDbContext db) =>
+        {
+            var rows = await db.Checks
+                .OrderByDescending(c => c.CheckDate)
+                .ThenByDescending(c => c.Id)
+                .Select(c => new TransactionRowDto(
+                    c.Id,
+                    c.CheckDate,
+                    c.Fundraiser.Name,
+                    c.Bank,
+                    c.Amount,
+                    c.Status))
+                .ToListAsync();
+
+            return Results.Ok(rows);
+        });
+
         app.MapGet("/reports/export", async (string groupBy, DateTime? from, DateTime? to, CheckScanDbContext db) =>
         {
             var rows = await BuildSummaryAsync(groupBy, from, to, db);
@@ -63,4 +80,5 @@ public static class ReportEndpoints
     }
 
     public record SummaryRowDto(string Group, int Count, decimal Total);
+    public record TransactionRowDto(int Id, DateTime Date, string Fundraiser, string Bank, decimal Amount, string Status);
 }

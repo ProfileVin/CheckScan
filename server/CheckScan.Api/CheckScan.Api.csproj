@@ -28,6 +28,16 @@
     <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
   </ItemGroup>
 
+  <!-- Baked internal deployment: a gitignored appsettings.Production.json created on the build
+       machine is published next to the exe (loaded automatically since the packaged app runs as
+       Production) so a client install needs no manual configuration. The SDK's appsettings.*.json
+       glob already copies it; this makes the intent explicit and the Exists() guard keeps
+       build/publish working when the file is absent. See DEPLOYMENT.md. Internal builds only -
+       the secrets ship in plaintext inside the installer. -->
+  <ItemGroup Condition="Exists('appsettings.Production.json')">
+    <Content Update="appsettings.Production.json" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Azure.Storage.Blobs" Version="12.24.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11">

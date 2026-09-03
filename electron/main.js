@@ -154,6 +154,10 @@ ipcMain.handle('start-scan', async () => {
 
 ipcMain.handle('get-feeder-status', () => getJson('/scan/feeder-status'));
 
+// Settings page "Test Connection": re-opens the selected TWAIN source; rejects with the
+// scanner error message when no device is selected or it can't be reached.
+ipcMain.handle('test-scanner', () => postJson('/scanners/test', {}));
+
 // Extraction runs server-side now: the API calls Anthropic with the key from its
 // Anthropic:ApiKey config (see server AI/CheckExtractionService.cs).
 ipcMain.handle('extract-check', (_event, imagePath) => postJson('/checks/extract', { imagePath }));
@@ -184,6 +188,10 @@ ipcMain.handle('get-reports-summary', (_event, { groupBy, from, to }) => {
   if (to) params.set('to', to);
   return getJson(`/reports/summary?${params.toString()}`);
 });
+
+// Flat, newest-first list of every scanned check (date, fundraiser, bank, amount, status)
+// for the Reports & Analytics transaction table. Filtering/paging happens in the renderer.
+ipcMain.handle('get-report-transactions', () => getJson('/reports/transactions'));
 
 // Writes a caller-supplied CSV string to a user-chosen file (used by the fundraiser
 // detail page's "Export to CSV"). Returns { saved, filePath }.

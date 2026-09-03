@@ -202,6 +202,16 @@ button {
 
 .btn-lg { padding: 13px 22px; font-size: 15px; }
 
+/* Soft accent: navy text/border on a pale-navy fill (e.g. Settings "Test Connection"). */
+.btn-soft {
+  background: var(--navy-050);
+  border-color: var(--navy);
+  color: var(--navy);
+  font-weight: 700;
+}
+
+.btn-soft:hover { background: #dce7fb; }
+
 button:disabled,
 .btn:disabled {
   cursor: not-allowed;
@@ -349,26 +359,104 @@ table th {
   color: var(--muted);
 }
 
-/* ---------- Settings ---------- */
+/* ---------- Configuration (Settings) ---------- */
 
-.settings-block {
-  margin-bottom: 28px;
-  padding-bottom: 24px;
+/* This view supplies its own card, so the generic section card is switched off. */
+#view-settings {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  min-height: 0;
+}
+
+.cfg-head { margin-bottom: 20px; }
+
+.cfg-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 26px 28px;
+}
+
+.cfg-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 16px;
   border-bottom: 1px solid var(--border);
+  margin-bottom: 22px;
 }
 
-.settings-block:last-child { border-bottom: 0; }
+.cfg-card-head h2 { margin: 0; font-size: 1.1rem; }
 
-.settings-block input[type="password"],
-.settings-block select {
+.cfg-card-icon {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  fill: none;
+  stroke: var(--navy);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.cfg-field { margin-bottom: 20px; }
+
+.cfg-label {
   display: block;
-  margin: 8px 0;
-  min-width: 320px;
-  max-width: 640px;
-  width: 100%;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
 }
 
-.settings-block small { color: var(--muted); }
+.cfg-select {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 8px;
+}
+
+.cfg-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.cfg-status {
+  color: var(--muted);
+  margin: 14px 2px 0;
+  min-height: 1.2em;
+}
+
+.cfg-status:empty { display: none; }
+.cfg-status.is-error { color: var(--danger); }
+.cfg-status.is-ok { color: #15803d; }
+
+.cfg-note {
+  display: flex;
+  gap: 12px;
+  margin-top: 22px;
+  padding: 14px 16px;
+  background: #f1f5f9;
+  border-radius: 10px;
+  color: var(--muted);
+}
+
+.cfg-note p { margin: 0; }
+
+.cfg-note svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  fill: none;
+  stroke: var(--navy);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 
 /* ---------- New Batch: workspace ---------- */
 
@@ -1245,4 +1333,132 @@ table th {
 .modal-ok {
   width: 100%;
   padding: 13px;
+}
+
+/* ---------- Reports & Analytics ---------- */
+
+/* This view supplies its own card, so the generic section wrapper is switched off. */
+#view-reports {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  min-height: 0;
+}
+
+.rp-head { margin-bottom: 20px; }
+
+.rp-kpis {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.rp-kpi {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rp-kpi-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.rp-kpi-value {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.rp-kpi-sub {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+/* Let the Date Range popover escape the card; .fr-card clips with overflow:hidden. */
+.rp-card { overflow: visible; }
+.rp-card .fr-footer { border-radius: 0 0 var(--radius) var(--radius); }
+
+.rp-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.rp-card-head h2 { margin: 0; font-size: 1.15rem; }
+
+.rp-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.rp-tools select {
+  padding: 9px 12px;
+  border-radius: 8px;
+}
+
+.rp-daterange { position: relative; }
+
+.rp-range-btn { white-space: nowrap; }
+
+.rp-range-pop {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 20;
+  width: 240px;
+  background: var(--card);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  padding: 14px;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.16);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rp-range-pop label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.rp-range-pop input { width: 100%; }
+
+.rp-range-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.rp-range-actions .btn { padding: 7px 14px; }
+
+.rp-table tbody tr { cursor: default; }
+
+.rp-amount-col { text-align: right; }
+.rp-table thead th.rp-amount-col { text-align: right; }
+.rp-table tbody td.rp-amount-col { font-variant-numeric: tabular-nums; }
+
+.rp-card #rp-status { padding: 10px 20px 0; }
+
+@media (max-width: 900px) {
+  .rp-kpis { grid-template-columns: 1fr; }
 }

@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('checkScan', {
   selectScanner: (sourceId, sourceName) => ipcRenderer.invoke('select-scanner', { sourceId, sourceName }),
   startScan: () => ipcRenderer.invoke('start-scan'),
   getFeederStatus: () => ipcRenderer.invoke('get-feeder-status'),
+  testScanner: () => ipcRenderer.invoke('test-scanner'),
   extractCheck: (imagePath) => ipcRenderer.invoke('extract-check', imagePath),
   getCheckImage: (imagePath) => ipcRenderer.invoke('get-check-image', imagePath),
   onCheckScanned: (callback) => {
@@ -23,6 +24,7 @@ contextBridge.exposeInMainWorld('checkScan', {
   saveCheck: (check) => ipcRenderer.invoke('save-check', check),
 
   getReportsSummary: (groupBy, from, to) => ipcRenderer.invoke('get-reports-summary', { groupBy, from, to }),
+  getReportTransactions: () => ipcRenderer.invoke('get-report-transactions'),
   exportReportsCsv: (groupBy, from, to) => ipcRenderer.invoke('export-reports-csv', { groupBy, from, to }),
   saveCsvFile: (defaultName, csv) => ipcRenderer.invoke('save-csv-file', { defaultName, csv }),
 

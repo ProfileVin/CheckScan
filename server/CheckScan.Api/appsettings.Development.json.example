@@ -1,10 +1,13 @@
 {
   // DEV CONVENIENCE ONLY. Copy this file to appsettings.Development.json (gitignored).
   //
-  // In a real install the Azure SQL and Azure Blob connection strings are entered on the
-  // Electron Settings page and held DPAPI-encrypted at %LOCALAPPDATA%\CheckScan\secrets.dat
-  // (see Storage/SecretStore.cs) - never in plain-text config. The entries below are just a
-  // fallback so `dotnet run` works without seeding that file first.
+  // For a client install, configure the Azure SQL / Azure Blob / Anthropic values on the target
+  // PC via appsettings.Production.json next to CheckScan.Api.exe, or via machine environment
+  // variables - see DEPLOYMENT.md and appsettings.Production.json.example. (The API can also hold
+  // the SQL/Blob strings DPAPI-encrypted at %LOCALAPPDATA%\CheckScan\secrets.dat - see
+  // Storage/SecretStore.cs - but that file is now written only if the /settings/db-connection
+  // and /settings/blob-connection endpoints are called directly; there is no longer an in-app
+  // screen for them.) The entries below are just a dev fallback so `dotnet run` works.
 
   "ConnectionStrings": {
     "DefaultConnection": "Server=tcp:YOUR_SERVER.database.windows.net,1433;Database=CheckScan;User ID=YOUR_USER;Password=YOUR_PASSWORD;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;",

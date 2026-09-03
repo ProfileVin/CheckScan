@@ -2,6 +2,7 @@ bin/
 obj/
 node_modules/
 appsettings.Development.json
+appsettings.Production.json
 .env
 electron/build/
 electron/dist/
