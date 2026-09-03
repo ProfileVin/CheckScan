@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "CheckScan desktop app - TWAIN batch scanning + AI extraction for check deposits",
+
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -23,7 +24,9 @@
       "main.js",
       "preload.js",
       "ai/**/*",
-      "renderer/**/*"
+      "renderer/**/*",
+      "!renderer/preview.html",
+      "!renderer/preview.mock.js"
     ],
     "extraResources": [
       {
