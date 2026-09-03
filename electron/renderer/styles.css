@@ -9,7 +9,8 @@
   --border: #e4e8ef;
   --border-strong: #cfd6e0;
   --danger: #b42318;
-  --radius: 12px;
+  --radius: 8px;
+  --green: #16A34A;
 }
 
 * { box-sizing: border-box; }
@@ -119,6 +120,7 @@ nav a.active::after {
   justify-content: flex-end;
   gap: 6px;
   padding: 0 22px;
+  overflow: hidden;
 }
 
 .icon-btn {
@@ -143,6 +145,63 @@ nav a.active::after {
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+/* Detail-view breadcrumb rendered in the top bar (e.g. a fundraiser's detail page).
+   margin-right:auto pushes the icon buttons to the far right; collapses to nothing when empty. */
+.topbar-crumb {
+  margin-right: auto;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 0.95rem;
+}
+
+.topbar-crumb .tc-back {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  padding: 0;
+}
+
+.topbar-crumb .tc-back:hover { background: #eef1f5; }
+
+.topbar-crumb .tc-back svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.topbar-crumb .tc-link {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 0;
+  font: inherit;
+}
+
+.topbar-crumb .tc-link:hover { color: var(--navy); text-decoration: underline; }
+
+.topbar-crumb .tc-sep { color: var(--border-strong); }
+
+.topbar-crumb .tc-current {
+  color: var(--navy);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .page { padding: 24px; flex: 1; }
@@ -861,7 +920,7 @@ table th {
 
 .fr-title {
   font-size: 1.9rem;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: -0.01em;
   margin: 0 0 6px;
 }
@@ -921,18 +980,24 @@ table th {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
+ 
 }
 
 .fr-table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
+  
 }
 
 .fr-table thead th {
   background: transparent;
   padding: 16px 20px;
   border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  color: #424752;
+  
+
 }
 
 .fr-table tbody td {
@@ -1029,51 +1094,7 @@ table th {
 
 /* ---------- Fundraiser detail ---------- */
 
-.fd-crumb {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 24px;
-  font-size: 0.95rem;
-}
-
-.fd-back-icon {
-  display: inline-grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--ink);
-  padding: 0;
-}
-
-.fd-back-icon:hover { background: #eef1f5; }
-
-.fd-back-icon svg {
-  width: 18px;
-  height: 18px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.fd-crumb-link {
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  padding: 0;
-  font: inherit;
-}
-
-.fd-crumb-link:hover { color: var(--navy); text-decoration: underline; }
-
-.fd-crumb-sep { color: var(--border-strong); }
-
-.fd-crumb-current { color: var(--navy); font-weight: 700; }
+/* The detail-page breadcrumb now lives in the top bar - see .topbar-crumb above. */
 
 .fd-head {
   display: flex;
@@ -1081,6 +1102,8 @@ table th {
   justify-content: space-between;
   gap: 24px;
   margin-bottom: 24px;
+  font-weight: 600;
+ 
 }
 
 .fd-name {
@@ -1094,7 +1117,7 @@ table th {
 
 .fd-total-label {
   font-size: 0.72rem;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--muted);
@@ -1112,6 +1135,7 @@ table th {
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
   margin-bottom: 24px;
+  font-weight: 600;
 }
 
 .fd-stat {
@@ -1366,7 +1390,7 @@ table th {
 
 .rp-kpi-label {
   font-size: 0.72rem;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--muted);
@@ -1374,14 +1398,15 @@ table th {
 
 .rp-kpi-value {
   font-size: 2rem;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
+  
 }
 
 .rp-kpi-sub {
   font-size: 0.82rem;
-  color: var(--muted);
+  color: var(--green);
 }
 
 /* Let the Date Range popover escape the card; .fr-card clips with overflow:hidden. */
@@ -1396,6 +1421,7 @@ table th {
   flex-wrap: wrap;
   padding: 18px 20px;
   border-bottom: 1px solid var(--border);
+  font-weight: 600;
 }
 
 .rp-card-head h2 { margin: 0; font-size: 1.15rem; }
@@ -1451,7 +1477,10 @@ table th {
 
 .rp-range-actions .btn { padding: 7px 14px; }
 
-.rp-table tbody tr { cursor: default; }
+.rp-table tbody tr 
+{ 
+  cursor: default; 
+}
 
 .rp-amount-col { text-align: right; }
 .rp-table thead th.rp-amount-col { text-align: right; }

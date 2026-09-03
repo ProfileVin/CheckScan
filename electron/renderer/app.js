@@ -16,6 +16,9 @@ async function navigate() {
   const tab = currentTab();
   showTab(tab);
 
+  // Shared breadcrumb slot in the top bar - each view fills it if it needs one.
+  document.getElementById('topbar-crumb').innerHTML = '';
+
   switch (tab) {
     case 'new-batch':
       return window.Views.newBatch.init();

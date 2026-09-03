@@ -269,6 +269,26 @@
     return `<span class="fd-badge is-verified"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="8 12.5 11 15.5 16 9"/></svg>Verified</span>`;
   }
 
+  // Fundraiser detail navigation lives in the top app bar, not in the page body.
+  function setTopbarCrumb(name) {
+    const el = document.getElementById('topbar-crumb');
+    if (!el) return;
+    if (!name) {
+      el.innerHTML = '';
+      return;
+    }
+    el.innerHTML = `
+      <button class="tc-back" type="button" aria-label="Back to directory">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      </button>
+      <button class="tc-link" type="button">Fundraisers</button>
+      <span class="tc-sep">/</span>
+      <span class="tc-current">${escapeHtml(name)}</span>
+    `;
+    el.querySelector('.tc-back').addEventListener('click', closeDetail);
+    el.querySelector('.tc-link').addEventListener('click', closeDetail);
+  }
+
   async function openDetail(id) {
     const detail = document.getElementById('fr-detail');
     document.querySelector('.fr-page').hidden = true;
@@ -299,15 +319,6 @@
       : null;
 
     detail.innerHTML = `
-      <div class="fd-crumb">
-        <button class="fr-back fd-back-icon" type="button" aria-label="Back to directory">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-        </button>
-        <button class="fd-crumb-link" type="button" data-role="to-dir">Fundraisers</button>
-        <span class="fd-crumb-sep">/</span>
-        <span class="fd-crumb-current">${escapeHtml(f.name)}</span>
-      </div>
-
       <div class="fd-head">
         <h1 class="fd-name">${escapeHtml(f.name)}</h1>
         <div class="fd-total">
@@ -351,8 +362,7 @@
       </div>
     `;
 
-    detail.querySelector('.fd-back-icon').addEventListener('click', closeDetail);
-    detail.querySelector('[data-role="to-dir"]').addEventListener('click', closeDetail);
+    setTopbarCrumb(f.name);
     const search = detail.querySelector('#fd-search');
     search.addEventListener('input', () => renderDetailRows(search.value));
     detail.querySelector('#fd-export').addEventListener('click', exportDetailCsv);
@@ -408,6 +418,7 @@
   function closeDetail() {
     document.getElementById('fr-detail').hidden = true;
     document.querySelector('.fr-page').hidden = false;
+    setTopbarCrumb(null);
   }
 
   window.Views = window.Views || {};
@@ -416,6 +427,11 @@
       if (!rendered) {
         render();
         rendered = true;
+      }
+      // Coming back to this tab while a fundraiser detail is still open - re-show its crumb.
+      const detail = document.getElementById('fr-detail');
+      if (detailData && detail && !detail.hidden) {
+        setTopbarCrumb(detailData.name);
       }
       if (loaded && !stale) {
         repaint();                     // instant, from the cached `all`
