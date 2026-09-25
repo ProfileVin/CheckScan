@@ -9,10 +9,25 @@ public static class ScannerEndpoints
 {
     public static void MapScannerEndpoints(this WebApplication app)
     {
-        app.MapGet("/scanners", async (TwainThread twainThread, TwainScanService scanService) =>
+        app.MapGet("/scanners", async (TwainThread twainThread, TwainScanService scanService, ILogger<Program> logger) =>
         {
-            var sources = await twainThread.RunOnTwainThread(scanService.GetSources);
-            return Results.Ok(sources);
+            try
+            {
+                var sources = await twainThread.RunOnTwainThread(scanService.GetSources);
+                return Results.Ok(sources);
+            }
+            catch (ScannerException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                // Unexpected NTwain/TWAIN DSM failure (missing driver, wrong bitness, DSM open
+                // failure) - surface the real message instead of an empty-body 500 (electron/main.js
+                // errorMessageFrom only reads body.error, so the shape below must match).
+                logger.LogError(ex, "Failed to enumerate TWAIN scanners.");
+                return Results.Json(new { error = ex.Message }, statusCode: StatusCodes.Status500InternalServerError);
+            }
         });
 
         app.MapGet("/scanners/current", async (CheckScanDbContext db, ILogger<Program> logger) =>

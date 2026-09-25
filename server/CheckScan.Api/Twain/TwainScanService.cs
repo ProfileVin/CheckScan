@@ -49,7 +49,13 @@ public sealed class TwainScanService
         {
             if (_session is not null) return _session;
 
-            var appId = TWIdentity.CreateFromAssembly(DataGroups.Image, Assembly.GetExecutingAssembly());
+            // Not CreateFromAssembly: it reads FileVersionInfo from Assembly.Location, which is ""
+            // for a single-file-published exe (see CheckScan.Api.csproj's PublishSingleFile) and
+            // throws "The path is empty. (Parameter 'path')" - Create() builds the identity from
+            // in-memory assembly metadata instead, with no disk access.
+            var executingAssembly = Assembly.GetExecutingAssembly();
+            var appVersion = executingAssembly.GetName().Version ?? new Version(1, 0, 0, 0);
+            var appId = TWIdentity.Create(DataGroups.Image, appVersion, "CheckScan", "CheckScan", "CheckScan", "CheckScan check scanning");
             _session = new TwainSession(appId);
             _session.Open(_twainThread.CreateMessageLoopHook());
             _session.DataTransferred += OnDataTransferred;
@@ -172,6 +178,16 @@ public sealed class TwainScanService
         // snaps to the nearest; if it rejects the call outright, TrySet logs and we keep the default.
         TrySet("ICAP_XRESOLUTION", () => source.Capabilities.ICapXResolution.SetValue((float)_scanDpi));
         TrySet("ICAP_YRESOLUTION", () => source.Capabilities.ICapYResolution.SetValue((float)_scanDpi));
+
+        // Without these, drivers default to scanning the whole feeder/glass area (observed: a
+        // full US-Letter page with the check occupying a small band in the middle) and preserve
+        // whatever orientation the check was physically fed in. Ask the driver to crop to the
+        // document and correct rotation itself - best-effort, since not every TWAIN driver
+        // implements all four; a driver that ignores one just keeps the fuller/rotated image.
+        TrySet("ICAP_AUTOMATICBORDERDETECTION", () => source.Capabilities.ICapAutomaticBorderDetection.SetValue(BoolType.True));
+        TrySet("ICAP_AUTOSIZE", () => source.Capabilities.ICapAutoSize.SetValue(AutoSize.Auto));
+        TrySet("ICAP_AUTOMATICDESKEW", () => source.Capabilities.ICapAutomaticDeskew.SetValue(BoolType.True));
+        TrySet("ICAP_AUTOMATICROTATE", () => source.Capabilities.ICapAutomaticRotate.SetValue(BoolType.True));
 
         // Native transfer previously caused a fatal native-level crash (STATUS_STACK_BUFFER_OVERRUN)
         // that no managed try/catch could intercept - but that turned out to be a 64-bit host /
