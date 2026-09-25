@@ -22,11 +22,23 @@ public static class ScanEndpoints
         });
 
         // Lets the UI tell the user whether to load the feeder or place a check on the glass.
-        app.MapGet("/scan/feeder-status", async (TwainThread twainThread, TwainScanService scanService) =>
+        app.MapGet("/scan/feeder-status", async (TwainThread twainThread, TwainScanService scanService, ILogger<Program> logger) =>
         {
-            var status = await twainThread.RunOnTwainThread(() =>
-                new { hasFeeder = scanService.FeederSupported, feederLoaded = scanService.FeederLoaded() });
-            return Results.Ok(status);
+            try
+            {
+                var status = await twainThread.RunOnTwainThread(() =>
+                    new { hasFeeder = scanService.FeederSupported, feederLoaded = scanService.FeederLoaded() });
+                return Results.Ok(status);
+            }
+            catch (ScannerException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to read scanner feeder status.");
+                return Results.Json(new { error = ex.Message }, statusCode: StatusCodes.Status500InternalServerError);
+            }
         });
 
         app.Map("/ws/scan", async (HttpContext context, ScanBroadcaster broadcaster) =>

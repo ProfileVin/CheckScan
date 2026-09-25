@@ -5,6 +5,11 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWindowsForms>true</UseWindowsForms>
+    <!-- No <Version> here on purpose: `npm run publish:api` passes -p:Version=<electron/package.json
+         version> so CheckScan.Api.exe always carries the same version as the installer. Dev builds
+         (dotnet run/build) just use the SDK default 1.0.0. -->
+    <Product>CheckScan API</Product>
+    <Company>CheckScan</Company>
     <!-- Matches the working TwainTest reference project: the Epson TWAIN driver is 32-bit-only,
          and loading it into a 64-bit host process caused a native STATUS_STACK_BUFFER_OVERRUN
          crash during data transfer that no managed try/catch could intercept. -->

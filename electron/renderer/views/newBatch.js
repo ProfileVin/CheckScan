@@ -171,7 +171,18 @@
     document.getElementById('nb-status').textContent = text;
   }
 
-  function showSavedModal(message) {
+  /** Returns to the "Start New Scan" landing screen and clears the finished batch's state. */
+  function resetToEmpty() {
+    currentBatchId = null;
+    checks = [];
+    selectedIndex = null;
+    document.getElementById('nb-checks').innerHTML = '';
+    document.getElementById('nb-workspace').hidden = true;
+    document.getElementById('nb-empty').hidden = false;
+    setStatus('');
+  }
+
+  function showSavedModal(message, onClose) {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.innerHTML = `
@@ -191,6 +202,7 @@
     const close = () => {
       overlay.remove();
       document.removeEventListener('keydown', onKey);
+      onClose?.();
     };
     function onKey(e) {
       if (e.key === 'Escape') close();
@@ -423,10 +435,13 @@
   function fieldInputHtml(field, entry) {
     const raw = entry.confidence ? Number(entry.confidence[field.key]) : NaN;
     const low = Number.isFinite(raw) && raw < 0.75;
+    // Check Date gets a native date picker (extraction already returns yyyy-mm-dd, which is
+    // exactly what <input type="date"> expects) - every other field stays free-text.
+    const inputType = field.key === 'date' ? 'date' : 'text';
     return `
       <label class="field ${field.className || ''} ${low ? 'low-confidence' : ''}">
         <span>${field.label}</span>
-        <input type="text" data-field="${field.key}" value="${escapeHtml(entry.values[field.key])}" />
+        <input type="${inputType}" data-field="${field.key}" value="${escapeHtml(entry.values[field.key])}" />
       </label>
     `;
   }
@@ -624,7 +639,7 @@
       const skipNote = skipped
         ? ` ${skipped} flagged check${skipped === 1 ? '' : 's'} ${skipped === 1 ? 'was' : 'were'} skipped because no fundraiser was assigned.`
         : '';
-      showSavedModal(`Every check has been added to its fundraiser's history.${skipNote}`);
+      showSavedModal(`Every check has been added to its fundraiser's history.${skipNote}`, resetToEmpty);
     }
   }
 

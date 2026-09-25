@@ -9,6 +9,27 @@ let apiProcess = null;
 let apiBaseUrl = null;
 let mainWindow = null;
 let scanSocket = null;
+let isQuitting = false;
+
+// Auto-restart bookkeeping for the API process - see handleUnexpectedExit() below.
+let restartAttempts = 0;
+let restartWindowStart = Date.now();
+const MAX_RESTARTS_PER_WINDOW = 5;
+const RESTART_WINDOW_MS = 5 * 60 * 1000;
+const RESTART_DELAY_MS = 1000;
+
+// Mirrors the API's own data root (see server ImageStorageOptions.cs / SecretStore.cs) so every
+// CheckScan-related file lives under one folder a client can be pointed to without a terminal.
+const LOG_DIR = path.join(process.env.LOCALAPPDATA || app.getPath('userData'), 'CheckScan', 'logs');
+const LOG_FILE = path.join(LOG_DIR, 'api.log');
+let logStream = null;
+
+function initApiLog() {
+  fs.mkdirSync(LOG_DIR, { recursive: true });
+  // Appends across relaunches - see DEPLOYMENT.md's troubleshooting section for this path.
+  logStream = fs.createWriteStream(LOG_FILE, { flags: 'a' });
+  logStream.write(`\n----- CheckScan.Api starting ${new Date().toISOString()} -----\n`);
+}
 
 function resolveApiCommand() {
   // Dev: run the API project via `dotnet run`. Packaged builds should instead point at
@@ -32,34 +53,96 @@ function resolveApiCommand() {
   };
 }
 
-function startApiProcess() {
+function launchApi({ onReady, onExit }) {
   const { command, args, cwd, env } = resolveApiCommand();
   apiProcess = spawn(command, args, { cwd, env });
+  let ready = false;
 
+  apiProcess.stdout.on('data', (data) => {
+    const text = data.toString();
+    console.log(`[CheckScan.Api] ${text}`);
+    logStream?.write(text);
+    const match = text.match(/PORT:(\d+)/);
+    if (match && !ready) {
+      ready = true;
+      onReady(match[1]);
+    }
+  });
+
+  apiProcess.stderr.on('data', (data) => {
+    const text = data.toString();
+    console.error(`[CheckScan.Api] ${text}`);
+    logStream?.write(text);
+  });
+
+  apiProcess.on('exit', (code) => {
+    console.log(`CheckScan.Api exited with code ${code}`);
+    logStream?.write(`CheckScan.Api exited with code ${code}\n`);
+    onExit(code, ready);
+  });
+}
+
+function startApiProcess() {
+  initApiLog();
   return new Promise((resolve, reject) => {
-    let resolved = false;
-
-    apiProcess.stdout.on('data', (data) => {
-      const text = data.toString();
-      console.log(`[CheckScan.Api] ${text}`);
-      const match = text.match(/PORT:(\d+)/);
-      if (match && !resolved) {
-        resolved = true;
-        apiBaseUrl = `http://127.0.0.1:${match[1]}`;
-        connectScanSocket(match[1]);
+    launchApi({
+      onReady: (port) => {
+        apiBaseUrl = `http://127.0.0.1:${port}`;
+        connectScanSocket(port);
         resolve(apiBaseUrl);
-      }
-    });
-
-    apiProcess.stderr.on('data', (data) => {
-      console.error(`[CheckScan.Api] ${data.toString()}`);
-    });
-
-    apiProcess.on('exit', (code) => {
-      console.log(`CheckScan.Api exited with code ${code}`);
-      if (!resolved) reject(new Error(`API process exited before reporting a port (code ${code})`));
+      },
+      onExit: (code, wasReady) => {
+        if (isQuitting) return;
+        if (!wasReady) {
+          reject(new Error(`API process exited before reporting a port (code ${code})`));
+          return;
+        }
+        handleUnexpectedExit(code);
+      },
     });
   });
+}
+
+// The API can die mid-session from a native driver crash outside our control (observed: Epson
+// Scan 2's ES2UI.dll hitting STATUS_STACK_BUFFER_OVERRUN while re-opening the TWAIN source for
+// Test Connection - see Windows' own WER crash reports). Respawn it instead of leaving the whole
+// app stuck on a dead port until a full quit/relaunch. Capped so a process that can never start
+// (e.g. bad config) doesn't hammer the machine in a tight crash loop.
+function handleUnexpectedExit(code) {
+  if (isQuitting) return;
+  apiBaseUrl = null;
+  if (scanSocket) {
+    scanSocket.close();
+    scanSocket = null;
+  }
+
+  const now = Date.now();
+  if (now - restartWindowStart > RESTART_WINDOW_MS) {
+    restartWindowStart = now;
+    restartAttempts = 0;
+  }
+  restartAttempts += 1;
+
+  if (restartAttempts > MAX_RESTARTS_PER_WINDOW) {
+    const msg = `CheckScan.Api crashed ${restartAttempts} times in ${RESTART_WINDOW_MS / 60000} min - auto-restart disabled (exit code ${code}). Restart CheckScan manually.`;
+    console.error(msg);
+    logStream?.write(msg + '\n');
+    return;
+  }
+
+  console.warn(`CheckScan.Api exited unexpectedly (code ${code}) - restarting (attempt ${restartAttempts}/${MAX_RESTARTS_PER_WINDOW})...`);
+  setTimeout(() => {
+    if (isQuitting) return;
+    launchApi({
+      onReady: (port) => {
+        apiBaseUrl = `http://127.0.0.1:${port}`;
+        connectScanSocket(port);
+      },
+      onExit: (code2) => {
+        handleUnexpectedExit(code2);
+      },
+    });
+  }, RESTART_DELAY_MS);
 }
 
 function connectScanSocket(port) {
@@ -105,8 +188,10 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  isQuitting = true;
   if (scanSocket) scanSocket.close();
   if (apiProcess) apiProcess.kill();
+  logStream?.end();
 });
 
 async function errorMessageFrom(res, fallback) {

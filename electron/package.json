@@ -7,7 +7,7 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "publish:api": "dotnet publish ../server/CheckScan.Api -c Release -r win-x86 --self-contained -p:PublishSingleFile=true -o build/server",
+    "publish:api": "dotnet publish ../server/CheckScan.Api -c Release -r win-x86 --self-contained -p:PublishSingleFile=true -p:Version=%npm_package_version% -o build/server",
     "dist": "npm run publish:api && electron-builder"
   },
   "dependencies": {
